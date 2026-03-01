@@ -29,25 +29,25 @@ async function apiFetch(path, token, options = {}) {
 export default function App() {
   const [token, setToken] = useState('');
   const [role, setRole] = useState('');
-  const [users, setUsers] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
   const [entitlements, setEntitlements] = useState([]);
-  const [selectedUser, setSelectedUser] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState('');
   const [selectedProduct, setSelectedProduct] = useState('');
   const [lengthDays, setLengthDays] = useState(30);
-  const [selectedRightsUser, setSelectedRightsUser] = useState('');
+  const [selectedRightsCustomer, setSelectedRightsCustomer] = useState('');
   const [rights, setRights] = useState([]);
   const [error, setError] = useState('');
 
   const canWrite = useMemo(() => role === 'support', [role]);
 
   async function loadData(currentToken) {
-    const [u, p, e] = await Promise.all([
-      apiFetch('/users', currentToken),
+    const [c, p, e] = await Promise.all([
+      apiFetch('/customers', currentToken),
       apiFetch('/products', currentToken),
       apiFetch('/entitlements', currentToken),
     ]);
-    setUsers(u);
+    setCustomers(c);
     setProducts(p);
     setEntitlements(e);
   }
@@ -72,7 +72,7 @@ export default function App() {
     await apiFetch('/entitlements', token, {
       method: 'POST',
       body: JSON.stringify({
-        user: Number(selectedUser),
+        customer: Number(selectedCustomer),
         product: Number(selectedProduct),
         start_date: new Date().toISOString().slice(0, 10),
         length_days: Number(lengthDays),
@@ -92,7 +92,7 @@ export default function App() {
 
   async function fetchRights() {
     setError('');
-    const data = await apiFetch(`/users/${selectedRightsUser}/rights`, token);
+    const data = await apiFetch(`/customers/${selectedRightsCustomer}/rights`, token);
     setRights(data.active_rights || []);
   }
 
@@ -114,16 +114,16 @@ export default function App() {
 
           <section className="card">
             <h2>Grant Entitlement</h2>
-            <select value={selectedUser} onChange={(e) => setSelectedUser(e.target.value)}>
-              <option value="">Select User</option>
-              {users.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}
+            <select value={selectedCustomer} onChange={(e) => setSelectedCustomer(e.target.value)}>
+              <option value="">Select Customer</option>
+              {customers.map((c) => <option key={c.id} value={c.id}>{c.email}</option>)}
             </select>
             <select value={selectedProduct} onChange={(e) => setSelectedProduct(e.target.value)}>
               <option value="">Select Product</option>
               {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
             <input type="number" value={lengthDays} min={1} onChange={(e) => setLengthDays(e.target.value)} />
-            <button disabled={!canWrite || !selectedUser || !selectedProduct} onClick={grantEntitlement}>Grant</button>
+            <button disabled={!canWrite || !selectedCustomer || !selectedProduct} onClick={grantEntitlement}>Grant</button>
           </section>
 
           <section className="card">
@@ -131,14 +131,14 @@ export default function App() {
             <table>
               <thead>
                 <tr>
-                  <th>ID</th><th>User</th><th>Product</th><th>Start</th><th>End</th><th>Status</th><th>Action</th>
+                  <th>ID</th><th>Customer</th><th>Product</th><th>Start</th><th>End</th><th>Status</th><th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {entitlements.map((ent) => (
                   <tr key={ent.id}>
                     <td>{ent.id}</td>
-                    <td>{ent.user_email}</td>
+                    <td>{ent.customer_email}</td>
                     <td>{ent.product_name}</td>
                     <td>{ent.start_date}</td>
                     <td>{ent.end_date}</td>
@@ -151,12 +151,12 @@ export default function App() {
           </section>
 
           <section className="card">
-            <h2>Query User Rights</h2>
-            <select value={selectedRightsUser} onChange={(e) => setSelectedRightsUser(e.target.value)}>
-              <option value="">Select User</option>
-              {users.map((u) => <option key={u.id} value={u.id}>{u.email}</option>)}
+            <h2>Query Customer Rights</h2>
+            <select value={selectedRightsCustomer} onChange={(e) => setSelectedRightsCustomer(e.target.value)}>
+              <option value="">Select Customer</option>
+              {customers.map((c) => <option key={c.id} value={c.id}>{c.email}</option>)}
             </select>
-            <button disabled={!selectedRightsUser} onClick={fetchRights}>Get Rights</button>
+            <button disabled={!selectedRightsCustomer} onClick={fetchRights}>Get Rights</button>
             <ul>
               {rights.map((r) => <li key={r.id}>{r.product_name} ({r.start_date} to {r.end_date})</li>)}
             </ul>

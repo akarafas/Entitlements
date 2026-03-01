@@ -7,23 +7,26 @@ A runnable full-stack entitlements system for a publisher website built with:
 
 ## What the system supports
 
-- Grant user a product entitlement (`POST` / `PUT`)
-- Query a user's active rights (`GET`)
+- Grant customer product entitlements (`POST` / `PUT`)
+- Query a customer's active rights (`GET`)
 - Revoke and expire access rights lifecycle
-- Multiple products per user
+- Multiple products per customer
+- Clear separation of identities:
+  - **App users** (support/developer) authenticate into the console
+  - **Customers** are the consumers who receive entitlements
 - Role model:
   - `support`: read + write
   - `developer`: read only
 - Purchase history and access history tracking
-- Two seeded accepted test accounts for validation
 
 ## Data model
 
-- `User`: name, email, physical address, role
+- `AppUser`: support/developer users with app access credentials
+- `Customer`: media consumer profile (name, email, address)
 - `Product`: product name + access type (`digital`, `print`, `premium`)
-- `Entitlement`: user ↔ product mapping, start/end dates, revoke metadata
-- `PurchaseHistory`: user, product, price, date start/end
-- `AccessHistory`: user, accessed page, datetime
+- `Entitlement`: customer ↔ product mapping, start/end dates, revoke metadata
+- `PurchaseHistory`: customer, product, price, date start/end
+- `AccessHistory`: customer, accessed page, datetime
 
 ## Project layout
 
@@ -42,9 +45,9 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Flask runs on `http://localhost:8000` and auto-creates/initializes `entitlements.db` with seed data.
+Flask runs on `http://localhost:8000` and auto-creates/initializes `entitlements_v2.db` with seed data.
 
-If you previously installed dependencies before this fix, re-install backend requirements to avoid `hashlib.scrypt` compatibility errors on some Python builds:
+If you previously installed dependencies before this fix, re-install backend requirements:
 
 ```bash
 pip install -r requirements.txt --upgrade
@@ -61,21 +64,30 @@ npm run dev
 
 Frontend runs on `http://localhost:5173`.
 
-## Seeded test accounts
+## Seeded test data
+
+### App users (can log in)
 
 - Support (read/write): `support@example.com` / `Support123!`
 - Developer (read-only): `developer@example.com` / `Developer123!`
 
+### Customers (cannot log in)
+
+- `alex.reader@example.com`
+- `priya.subscriber@example.com`
+- `morgan.print@example.com`
+
 ## API endpoints
 
 - `POST /api/auth/login`
-- `GET /api/users`
+- `GET /api/app-users`
+- `GET /api/customers`
 - `GET /api/products`
 - `GET /api/entitlements`
 - `POST /api/entitlements` (support only)
 - `PUT /api/entitlements/{id}` (support only)
 - `POST /api/entitlements/{id}/revoke` (support only)
-- `GET /api/users/{id}/rights`
+- `GET /api/customers/{id}/rights`
 - `GET /api/purchase-history`
 - `GET /api/access-history`
 
@@ -83,4 +95,4 @@ Frontend runs on `http://localhost:5173`.
 
 - Payments are intentionally not implemented.
 - Entitlement active rights are computed from `is_revoked` and `end_date >= today`.
-- Access history logs when rights are queried.
+- Access history logs customer rights lookups.

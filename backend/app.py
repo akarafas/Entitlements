@@ -7,7 +7,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///entitlements.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///entitlements_v2.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 CORS(app)
@@ -21,15 +21,23 @@ def hash_password(password: str) -> str:
     return generate_password_hash(password, method=PASSWORD_HASH_METHOD)
 
 
-class User(db.Model):
-    __tablename__ = 'users'
+class AppUser(db.Model):
+    __tablename__ = 'app_users'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(255), nullable=False, unique=True)
+    role = db.Column(db.String(20), nullable=False, default='developer')
+    password_hash = db.Column(db.String(255), nullable=False)
+
+
+class Customer(db.Model):
+    __tablename__ = 'customers'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(255), nullable=False, unique=True)
     address = db.Column(db.String(255), nullable=True)
-    role = db.Column(db.String(20), nullable=False, default='developer')
-    password_hash = db.Column(db.String(255), nullable=False)
 
 
 class Product(db.Model):
@@ -44,14 +52,14 @@ class Entitlement(db.Model):
     __tablename__ = 'entitlements'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     start_date = db.Column(db.Date, nullable=False, default=date.today)
     end_date = db.Column(db.Date, nullable=False)
     is_revoked = db.Column(db.Boolean, nullable=False, default=False)
     revoked_at = db.Column(db.DateTime, nullable=True)
 
-    user = db.relationship('User', backref='entitlements')
+    customer = db.relationship('Customer', backref='entitlements')
     product = db.relationship('Product', backref='entitlements')
 
 
@@ -59,14 +67,14 @@ class PurchaseHistory(db.Model):
     __tablename__ = 'purchase_history'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     price = db.Column(db.Float, nullable=False)
     date_start = db.Column(db.Date, nullable=False)
     date_end = db.Column(db.Date, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
-    user = db.relationship('User', backref='purchase_history')
+    customer = db.relationship('Customer', backref='purchase_history')
     product = db.relationship('Product')
 
 
@@ -74,11 +82,11 @@ class AccessHistory(db.Model):
     __tablename__ = 'access_history'
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False)
     page = db.Column(db.String(200), nullable=False)
     accessed_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
-    user = db.relationship('User', backref='access_history')
+    customer = db.relationship('Customer', backref='access_history')
 
 
 def parse_date(value):
@@ -95,8 +103,8 @@ def entitlement_to_dict(ent):
     is_active = (not ent.is_revoked) and (not is_expired)
     return {
         'id': ent.id,
-        'user': ent.user_id,
-        'user_email': ent.user.email,
+        'customer': ent.customer_id,
+        'customer_email': ent.customer.email,
         'product': ent.product_id,
         'product_name': ent.product.name,
         'start_date': ent.start_date.isoformat(),
@@ -108,25 +116,28 @@ def entitlement_to_dict(ent):
     }
 
 
+def app_user_to_dict(user):
+    return {'id': user.id, 'name': user.name, 'email': user.email, 'role': user.role}
+
+
+def customer_to_dict(customer):
+    return {
+        'id': customer.id,
+        'name': customer.name,
+        'email': customer.email,
+        'address': customer.address,
+    }
+
+
 def product_to_dict(product):
     return {'id': product.id, 'name': product.name, 'access_type': product.access_type}
-
-
-def user_to_dict(user):
-    return {
-        'id': user.id,
-        'name': user.name,
-        'email': user.email,
-        'address': user.address,
-        'role': user.role,
-    }
 
 
 def purchase_to_dict(row):
     return {
         'id': row.id,
-        'user': row.user_id,
-        'user_email': row.user.email,
+        'customer': row.customer_id,
+        'customer_email': row.customer.email,
         'product': row.product_id,
         'product_name': row.product.name,
         'price': row.price,
@@ -139,8 +150,8 @@ def purchase_to_dict(row):
 def access_to_dict(row):
     return {
         'id': row.id,
-        'user': row.user_id,
-        'user_email': row.user.email,
+        'customer': row.customer_id,
+        'customer_email': row.customer.email,
         'page': row.page,
         'accessed_at': row.accessed_at.isoformat(),
     }
@@ -154,7 +165,7 @@ def current_user():
     user_id = TOKENS.get(token)
     if not user_id:
         return None
-    return User.query.get(user_id)
+    return AppUser.query.get(user_id)
 
 
 def require_auth():
@@ -179,7 +190,7 @@ def login():
     email = payload.get('email', '').strip().lower()
     password = payload.get('password', '')
 
-    user = User.query.filter_by(email=email).first()
+    user = AppUser.query.filter_by(email=email).first()
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({'error': 'Invalid credentials'}), 401
 
@@ -188,13 +199,24 @@ def login():
     return jsonify({'token': token, 'role': user.role, 'user_id': user.id})
 
 
-@app.get('/api/users')
-def list_users():
+@app.get('/api/app-users')
+def list_app_users():
     user, error = require_auth()
     if error:
         return error
     del user
-    return jsonify([user_to_dict(row) for row in User.query.order_by(User.id).all()])
+    rows = AppUser.query.order_by(AppUser.id).all()
+    return jsonify([app_user_to_dict(row) for row in rows])
+
+
+@app.get('/api/customers')
+def list_customers():
+    user, error = require_auth()
+    if error:
+        return error
+    del user
+    rows = Customer.query.order_by(Customer.id).all()
+    return jsonify([customer_to_dict(row) for row in rows])
 
 
 @app.get('/api/products')
@@ -230,7 +252,7 @@ def create_entitlement():
         return jsonify({'error': 'length_days must be >= 1'}), 400
 
     entitlement = Entitlement(
-        user_id=int(payload['user']),
+        customer_id=int(payload['customer']),
         product_id=int(payload['product']),
         start_date=start_date,
         end_date=calc_end_date(start_date, length_days),
@@ -239,7 +261,7 @@ def create_entitlement():
     db.session.flush()
 
     purchase = PurchaseHistory(
-        user_id=entitlement.user_id,
+        customer_id=entitlement.customer_id,
         product_id=entitlement.product_id,
         price=float(payload.get('price', 9.99)),
         date_start=entitlement.start_date,
@@ -259,8 +281,8 @@ def update_entitlement(entitlement_id):
     ent = Entitlement.query.get_or_404(entitlement_id)
     payload = request.get_json(force=True)
 
-    if 'user' in payload:
-        ent.user_id = int(payload['user'])
+    if 'customer' in payload:
+        ent.customer_id = int(payload['customer'])
     if 'product' in payload:
         ent.product_id = int(payload['product'])
     if 'start_date' in payload:
@@ -285,25 +307,26 @@ def revoke_entitlement(entitlement_id):
     return jsonify({'status': 'revoked'})
 
 
-@app.get('/api/users/<int:user_id>/rights')
-def user_rights(user_id):
-    request_user, error = require_auth()
+@app.get('/api/customers/<int:customer_id>/rights')
+def customer_rights(customer_id):
+    user, error = require_auth()
     if error:
         return error
+    del user
 
-    target_user = User.query.get_or_404(user_id)
+    customer = Customer.query.get_or_404(customer_id)
     today = date.today()
     rows = Entitlement.query.filter(
-        Entitlement.user_id == user_id,
+        Entitlement.customer_id == customer_id,
         Entitlement.is_revoked.is_(False),
         Entitlement.end_date >= today,
     ).order_by(Entitlement.id.desc()).all()
 
-    log = AccessHistory(user_id=request_user.id, page=f'/users/{user_id}/rights')
+    log = AccessHistory(customer_id=customer.id, page=f'/customers/{customer_id}/rights')
     db.session.add(log)
     db.session.commit()
 
-    return jsonify({'user': user_to_dict(target_user), 'active_rights': [entitlement_to_dict(row) for row in rows]})
+    return jsonify({'customer': customer_to_dict(customer), 'active_rights': [entitlement_to_dict(row) for row in rows]})
 
 
 @app.get('/api/purchase-history')
@@ -333,33 +356,40 @@ def seed_data():
         ('Premium All-Access', 'premium'),
     ]
     for name, access_type in products:
-        existing = Product.query.filter_by(name=name).first()
-        if not existing:
+        if not Product.query.filter_by(name=name).first():
             db.session.add(Product(name=name, access_type=access_type))
 
-    support = User.query.filter_by(email='support@example.com').first()
-    if not support:
+    # app users (operators, not entitlement customers)
+    if not AppUser.query.filter_by(email='support@example.com').first():
         db.session.add(
-            User(
+            AppUser(
                 name='Support Agent',
                 email='support@example.com',
-                address='123 Support Street',
                 role='support',
                 password_hash=hash_password('Support123!'),
             )
         )
 
-    developer = User.query.filter_by(email='developer@example.com').first()
-    if not developer:
+    if not AppUser.query.filter_by(email='developer@example.com').first():
         db.session.add(
-            User(
+            AppUser(
                 name='Dev Reader',
                 email='developer@example.com',
-                address='456 Developer Avenue',
                 role='developer',
                 password_hash=hash_password('Developer123!'),
             )
         )
+
+    # customers (media consumers)
+    customers = [
+        ('Alex Reader', 'alex.reader@example.com', '101 Main St'),
+        ('Priya Subscriber', 'priya.subscriber@example.com', '22 Ocean Ave'),
+        ('Morgan Print', 'morgan.print@example.com', '77 Pine Rd'),
+    ]
+    for name, email, address in customers:
+        if not Customer.query.filter_by(email=email).first():
+            db.session.add(Customer(name=name, email=email, address=address))
+
     db.session.commit()
 
 
