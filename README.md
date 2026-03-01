@@ -101,6 +101,8 @@ npm run dev
 - `POST /api/auth/login`
 - `GET /api/app-users`
 - `GET /api/customers`
+- `POST /api/customers` (support only)
+- `PUT /api/customers/{id}` (support only)
 - `GET /api/products`
 - `PUT /api/products/{id}` (support only, includes editable `description`)
 - `GET /api/entitlements`

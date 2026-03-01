@@ -38,6 +38,9 @@ export default function App() {
   const [selectedRightsCustomer, setSelectedRightsCustomer] = useState('');
   const [rights, setRights] = useState([]);
   const [error, setError] = useState('');
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerEmail, setNewCustomerEmail] = useState('');
+  const [newCustomerAddress, setNewCustomerAddress] = useState('');
 
   const canWrite = useMemo(() => role === 'support', [role]);
 
@@ -105,6 +108,32 @@ export default function App() {
     await loadData(token);
   }
 
+
+  async function createCustomer() {
+    setError('');
+    await apiFetch('/customers', token, {
+      method: 'POST',
+      body: JSON.stringify({
+        name: newCustomerName.trim(),
+        email: newCustomerEmail.trim(),
+        address: newCustomerAddress.trim(),
+      }),
+    });
+    setNewCustomerName('');
+    setNewCustomerEmail('');
+    setNewCustomerAddress('');
+    await loadData(token);
+  }
+
+  async function saveCustomer(customerId, name, email, address) {
+    setError('');
+    await apiFetch(`/customers/${customerId}`, token, {
+      method: 'PUT',
+      body: JSON.stringify({ name, email, address }),
+    });
+    await loadData(token);
+  }
+
   return (
     <main className="container">
       <h1>Entitlements Support Console (React + Flask)</h1>
@@ -120,6 +149,55 @@ export default function App() {
       ) : (
         <>
           <p>Logged in role: <strong>{role}</strong> ({canWrite ? 'read/write' : 'read-only'})</p>
+
+
+          <section className="card">
+            <h2>Customers</h2>
+            <p>View all customers below. Support users can add new customers and edit customer details.</p>
+            <div className="stack customer-create">
+              <input
+                placeholder="Customer name"
+                value={newCustomerName}
+                disabled={!canWrite}
+                onChange={(e) => setNewCustomerName(e.target.value)}
+              />
+              <input
+                placeholder="Customer email"
+                value={newCustomerEmail}
+                disabled={!canWrite}
+                onChange={(e) => setNewCustomerEmail(e.target.value)}
+              />
+              <input
+                placeholder="Customer address"
+                value={newCustomerAddress}
+                disabled={!canWrite}
+                onChange={(e) => setNewCustomerAddress(e.target.value)}
+              />
+              <button
+                disabled={!canWrite || !newCustomerName.trim() || !newCustomerEmail.trim()}
+                onClick={createCustomer}
+              >
+                Add Customer
+              </button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th><th>Name</th><th>Email</th><th>Address</th><th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customers.map((customer) => (
+                  <CustomerRow
+                    key={customer.id}
+                    customer={customer}
+                    canWrite={canWrite}
+                    onSave={saveCustomer}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </section>
 
           <section className="card">
             <h2>Products</h2>
@@ -202,6 +280,36 @@ export default function App() {
 function formatStatus(status) {
   if (!status) return 'Unknown';
   return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+
+function CustomerRow({ customer, canWrite, onSave }) {
+  const [name, setName] = useState(customer.name);
+  const [email, setEmail] = useState(customer.email);
+  const [address, setAddress] = useState(customer.address || '');
+
+  useEffect(() => {
+    setName(customer.name);
+    setEmail(customer.email);
+    setAddress(customer.address || '');
+  }, [customer.id, customer.name, customer.email, customer.address]);
+
+  return (
+    <tr>
+      <td>{customer.id}</td>
+      <td><input value={name} disabled={!canWrite} onChange={(e) => setName(e.target.value)} /></td>
+      <td><input value={email} disabled={!canWrite} onChange={(e) => setEmail(e.target.value)} /></td>
+      <td><input value={address} disabled={!canWrite} onChange={(e) => setAddress(e.target.value)} /></td>
+      <td>
+        <button
+          disabled={!canWrite || !name.trim() || !email.trim()}
+          onClick={() => onSave(customer.id, name.trim(), email.trim(), address.trim())}
+        >
+          Save
+        </button>
+      </td>
+    </tr>
+  );
 }
 
 function ProductRow({ product, canWrite, onSave }) {

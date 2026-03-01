@@ -235,6 +235,65 @@ def list_customers():
     return jsonify([customer_to_dict(row) for row in rows])
 
 
+
+
+@app.post('/api/customers')
+def create_customer():
+    user, error = require_support()
+    if error:
+        return error
+    del user
+
+    payload = request.get_json(force=True)
+    name = payload.get('name', '').strip()
+    email = payload.get('email', '').strip().lower()
+    address = payload.get('address', '').strip()
+
+    if not name:
+        return jsonify({'error': 'name is required'}), 400
+    if not email:
+        return jsonify({'error': 'email is required'}), 400
+
+    existing = Customer.query.filter_by(email=email).first()
+    if existing:
+        return jsonify({'error': 'customer email already exists'}), 400
+
+    customer = Customer(name=name, email=email, address=address)
+    db.session.add(customer)
+    db.session.commit()
+    return jsonify(customer_to_dict(customer)), 201
+
+
+@app.put('/api/customers/<int:customer_id>')
+def update_customer(customer_id):
+    user, error = require_support()
+    if error:
+        return error
+    del user
+
+    customer = Customer.query.get_or_404(customer_id)
+    payload = request.get_json(force=True)
+
+    name = payload.get('name', '').strip()
+    email = payload.get('email', '').strip().lower()
+    address = payload.get('address', '').strip()
+
+    if not name:
+        return jsonify({'error': 'name is required'}), 400
+    if not email:
+        return jsonify({'error': 'email is required'}), 400
+
+    existing = Customer.query.filter(Customer.id != customer.id, Customer.email == email).first()
+    if existing:
+        return jsonify({'error': 'customer email already exists'}), 400
+
+    customer.name = name
+    customer.email = email
+    customer.address = address
+    db.session.commit()
+    return jsonify(customer_to_dict(customer))
+
+
 @app.get('/api/products')
 def list_products():
     user, error = require_auth()

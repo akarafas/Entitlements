@@ -51,3 +51,7 @@ th, td {
   resize: vertical;
   box-sizing: border-box;
 }
+
+.customer-create {
+  margin-bottom: 12px;
+}
