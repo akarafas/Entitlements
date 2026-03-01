@@ -340,7 +340,7 @@ def seed_data():
                 email='support@example.com',
                 address='123 Support Street',
                 role='support',
-                password_hash=generate_password_hash('Support123!'),
+                password_hash=generate_password_hash('Support123!', method='pbkdf2:sha256'),
             )
         )
 
@@ -352,7 +352,7 @@ def seed_data():
                 email='developer@example.com',
                 address='456 Developer Avenue',
                 role='developer',
-                password_hash=generate_password_hash('Developer123!'),
+                password_hash=generate_password_hash('Developer123!', method='pbkdf2:sha256'),
             )
         )
     db.session.commit()
