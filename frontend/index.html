@@ -4,9 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Entitlements Support Console</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f8; }
+      .boot { max-width: 900px; margin: 24px auto; padding: 0 16px; color: #1f2937; }
+      .hint { color: #b91c1c; font-weight: 700; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main class="boot">
+        <h1>Entitlements Support Console</h1>
+        <p>Loading frontend…</p>
+        <p class="hint">If this message never changes, open browser DevTools Console and check for JavaScript errors.</p>
+      </main>
+    </div>
+    <noscript>
+      <main class="boot">
+        <h1>JavaScript is required</h1>
+        <p>Please enable JavaScript to run this app.</p>
+      </main>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

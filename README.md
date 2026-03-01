@@ -80,6 +80,8 @@ npm run dev
 ```
 
 4. Open browser devtools console for runtime errors (the app now shows a fallback message if render fails).
+5. Hard refresh the page (`Cmd+Shift+R` on macOS / `Ctrl+F5` on Windows/Linux) to clear stale cached bundles.
+6. Confirm the Vite terminal shows `Local: http://localhost:5173/` and no build errors.
 
 ## Seeded test data
 
