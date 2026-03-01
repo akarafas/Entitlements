@@ -96,11 +96,11 @@ export default function App() {
     setRights(data.active_rights || []);
   }
 
-  async function saveProduct(productId, name, accessType) {
+  async function saveProduct(productId, name, accessType, description) {
     setError('');
     await apiFetch(`/products/${productId}`, token, {
       method: 'PUT',
-      body: JSON.stringify({ name, access_type: accessType }),
+      body: JSON.stringify({ name, access_type: accessType, description }),
     });
     await loadData(token);
   }
@@ -123,11 +123,11 @@ export default function App() {
 
           <section className="card">
             <h2>Products</h2>
-            <p>View all products below. Support users can edit product name and access type.</p>
+            <p>View all products below. Support users can edit product name, access type, and description.</p>
             <table>
               <thead>
                 <tr>
-                  <th>ID</th><th>Name</th><th>Access Type</th><th>Action</th>
+                  <th>ID</th><th>Name</th><th>Access Type</th><th>Description</th><th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -151,7 +151,7 @@ export default function App() {
             </select>
             <select value={selectedProduct} onChange={(e) => setSelectedProduct(e.target.value)}>
               <option value="">Select Product</option>
-              {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              {products.map((p) => <option key={p.id} value={p.id}>{`${p.name} — ${p.description || 'No description'}`}</option>)}
             </select>
             <input type="number" value={lengthDays} min={1} onChange={(e) => setLengthDays(e.target.value)} />
             <button disabled={!canWrite || !selectedCustomer || !selectedProduct} onClick={grantEntitlement}>Grant</button>
@@ -201,11 +201,13 @@ export default function App() {
 function ProductRow({ product, canWrite, onSave }) {
   const [name, setName] = useState(product.name);
   const [accessType, setAccessType] = useState(product.access_type);
+  const [description, setDescription] = useState(product.description || '');
 
   useEffect(() => {
     setName(product.name);
     setAccessType(product.access_type);
-  }, [product.id, product.name, product.access_type]);
+    setDescription(product.description || '');
+  }, [product.id, product.name, product.access_type, product.description]);
 
   return (
     <tr>
@@ -229,9 +231,17 @@ function ProductRow({ product, canWrite, onSave }) {
         </select>
       </td>
       <td>
+        <input
+          value={description}
+          disabled={!canWrite}
+          placeholder="Describe this product"
+          onChange={(e) => setDescription(e.target.value)}
+        />
+      </td>
+      <td>
         <button
           disabled={!canWrite || !name.trim()}
-          onClick={() => onSave(product.id, name.trim(), accessType)}
+          onClick={() => onSave(product.id, name.trim(), accessType, description.trim())}
         >
           Save
         </button>

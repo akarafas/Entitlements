@@ -23,7 +23,7 @@ A runnable full-stack entitlements system for a publisher website built with:
 
 - `AppUser`: support/developer users with app access credentials
 - `Customer`: media consumer profile (name, email, address)
-- `Product`: product name + access type (`digital`, `print`, `premium`)
+- `Product`: product name, access type (`digital`, `print`, `premium`), and free-text description
 - `Entitlement`: customer ↔ product mapping, start/end dates, revoke metadata
 - `PurchaseHistory`: customer, product, price, date start/end
 - `AccessHistory`: customer, accessed page, datetime
@@ -102,7 +102,7 @@ npm run dev
 - `GET /api/app-users`
 - `GET /api/customers`
 - `GET /api/products`
-- `PUT /api/products/{id}` (support only)
+- `PUT /api/products/{id}` (support only, includes editable `description`)
 - `GET /api/entitlements`
 - `POST /api/entitlements` (support only)
 - `PUT /api/entitlements/{id}` (support only)

@@ -4,6 +4,7 @@ import secrets
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import inspect, text
 from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
@@ -46,6 +47,7 @@ class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), unique=True, nullable=False)
     access_type = db.Column(db.String(20), nullable=False)
+    description = db.Column(db.Text, nullable=False, default='')
 
 
 class Entitlement(db.Model):
@@ -130,7 +132,12 @@ def customer_to_dict(customer):
 
 
 def product_to_dict(product):
-    return {'id': product.id, 'name': product.name, 'access_type': product.access_type}
+    return {
+        'id': product.id,
+        'name': product.name,
+        'access_type': product.access_type,
+        'description': product.description or '',
+    }
 
 
 def purchase_to_dict(row):
@@ -242,6 +249,7 @@ def update_product(product_id):
 
     name = payload.get('name', '').strip()
     access_type = payload.get('access_type', '').strip().lower()
+    description = payload.get('description', '').strip()
 
     if not name:
         return jsonify({'error': 'name is required'}), 400
@@ -254,6 +262,7 @@ def update_product(product_id):
 
     product.name = name
     product.access_type = access_type
+    product.description = description
     db.session.commit()
     return jsonify(product_to_dict(product))
 
@@ -379,15 +388,26 @@ def access_history():
     return jsonify([access_to_dict(row) for row in rows])
 
 
+
+def ensure_schema_updates():
+    inspector = inspect(db.engine)
+    product_columns = {column['name'] for column in inspector.get_columns('products')}
+    if 'description' not in product_columns:
+        db.session.execute(text("ALTER TABLE products ADD COLUMN description TEXT NOT NULL DEFAULT ''"))
+        db.session.commit()
+
 def seed_data():
     products = [
-        ('Digital Basic', 'digital'),
-        ('Print Weekly', 'print'),
-        ('Premium All-Access', 'premium'),
+        ('Digital Basic', 'digital', 'Digital-only online reading access for daily articles.'),
+        ('Print Weekly', 'print', 'Weekly physical paper delivery with core sections.'),
+        ('Premium All-Access', 'premium', 'Digital + print bundle with premium investigative content.'),
     ]
-    for name, access_type in products:
-        if not Product.query.filter_by(name=name).first():
-            db.session.add(Product(name=name, access_type=access_type))
+    for name, access_type, description in products:
+        existing_product = Product.query.filter_by(name=name).first()
+        if not existing_product:
+            db.session.add(Product(name=name, access_type=access_type, description=description))
+        elif not existing_product.description:
+            existing_product.description = description
 
     # app users (operators, not entitlement customers)
     if not AppUser.query.filter_by(email='support@example.com').first():
@@ -426,5 +446,6 @@ def seed_data():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        ensure_schema_updates()
         seed_data()
     app.run(host='0.0.0.0', port=8000, debug=True)
