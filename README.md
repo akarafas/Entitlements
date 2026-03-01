@@ -64,6 +64,23 @@ npm run dev
 
 Frontend runs on `http://localhost:5173`.
 
+### Frontend troubleshooting (blank page)
+
+If `http://localhost:5173` is blank:
+
+1. Ensure backend is running on `http://localhost:8000`.
+2. In `frontend/.env`, confirm `VITE_API_BASE=http://localhost:8000/api`.
+3. Reinstall frontend dependencies after this update:
+
+```bash
+cd frontend
+rm -rf node_modules package-lock.json
+npm install
+npm run dev
+```
+
+4. Open browser devtools console for runtime errors (the app now shows a fallback message if render fails).
+
 ## Seeded test data
 
 ### App users (can log in)
