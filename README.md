@@ -44,6 +44,12 @@ python app.py
 
 Flask runs on `http://localhost:8000` and auto-creates/initializes `entitlements.db` with seed data.
 
+If you previously installed dependencies before this fix, re-install backend requirements to avoid `hashlib.scrypt` compatibility errors on some Python builds:
+
+```bash
+pip install -r requirements.txt --upgrade
+```
+
 ### 2) Frontend (React)
 
 ```bash

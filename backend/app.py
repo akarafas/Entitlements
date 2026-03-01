@@ -14,6 +14,11 @@ CORS(app)
 db = SQLAlchemy(app)
 
 TOKENS = {}
+PASSWORD_HASH_METHOD = 'pbkdf2:sha256'
+
+
+def hash_password(password: str) -> str:
+    return generate_password_hash(password, method=PASSWORD_HASH_METHOD)
 
 
 class User(db.Model):
@@ -340,7 +345,7 @@ def seed_data():
                 email='support@example.com',
                 address='123 Support Street',
                 role='support',
-                password_hash=generate_password_hash('Support123!', method='pbkdf2:sha256'),
+                password_hash=hash_password('Support123!'),
             )
         )
 
@@ -352,7 +357,7 @@ def seed_data():
                 email='developer@example.com',
                 address='456 Developer Avenue',
                 role='developer',
-                password_hash=generate_password_hash('Developer123!', method='pbkdf2:sha256'),
+                password_hash=hash_password('Developer123!'),
             )
         )
     db.session.commit()
