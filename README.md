@@ -23,7 +23,7 @@ A runnable full-stack entitlements system for a publisher website built with:
 
 - `AppUser`: support/developer users with app access credentials
 - `Customer`: media consumer profile (name, email, address)
-- `Product`: product name, access type (`digital`, `print`, `premium`), and free-text description
+- `Product`: product name, free-text description, and capability set (`READ_DIGITAL`, `RECEIVE_PRINT`, `NO_ADS`)
 - `Entitlement`: customer ↔ product mapping, start/end dates, revoke metadata
 - `PurchaseHistory`: customer, product, price, date start/end
 - `AccessHistory`: customer, accessed page, datetime
@@ -115,6 +115,11 @@ npm run dev
 
 ## Notes
 
+
+- Capability model for default seeded products:
+  - `Digital`  → `[READ_DIGITAL]`
+  - `Print`    → `[READ_DIGITAL, RECEIVE_PRINT]`
+  - `Premium`  → `[READ_DIGITAL, RECEIVE_PRINT, NO_ADS]`
 - Payments are intentionally not implemented.
 - Entitlements expose lifecycle `status` as `active`, `revoked`, or `expired` (expired after end date).
 - Entitlement active rights are computed from `is_revoked` and `end_date >= today`.

@@ -99,11 +99,11 @@ export default function App() {
     setRights(data.active_rights || []);
   }
 
-  async function saveProduct(productId, name, accessType, description) {
+  async function saveProduct(productId, name, accessType, description, capabilities) {
     setError('');
     await apiFetch(`/products/${productId}`, token, {
       method: 'PUT',
-      body: JSON.stringify({ name, access_type: accessType, description }),
+      body: JSON.stringify({ name, access_type: accessType, description, capabilities }),
     });
     await loadData(token);
   }
@@ -205,7 +205,7 @@ export default function App() {
             <table>
               <thead>
                 <tr>
-                  <th>ID</th><th>Name</th><th>Access Type</th><th>Description</th><th>Action</th>
+                  <th>ID</th><th>Name</th><th>Capabilities</th><th>Description</th><th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -229,7 +229,7 @@ export default function App() {
             </select>
             <select value={selectedProduct} onChange={(e) => setSelectedProduct(e.target.value)}>
               <option value="">Select Product</option>
-              {products.map((p) => <option key={p.id} value={p.id}>{`${p.name} — ${p.description || 'No description'}`}</option>)}
+              {products.map((p) => <option key={p.id} value={p.id}>{`${p.name} — ${(p.capabilities || []).join(', ')}`}</option>)}
             </select>
             <input type="number" value={lengthDays} min={1} onChange={(e) => setLengthDays(e.target.value)} />
             <button disabled={!canWrite || !selectedCustomer || !selectedProduct} onClick={grantEntitlement}>Grant</button>
@@ -314,14 +314,14 @@ function CustomerRow({ customer, canWrite, onSave }) {
 
 function ProductRow({ product, canWrite, onSave }) {
   const [name, setName] = useState(product.name);
-  const [accessType, setAccessType] = useState(product.access_type);
   const [description, setDescription] = useState(product.description || '');
+  const [capabilities, setCapabilities] = useState(product.capabilities || []);
 
   useEffect(() => {
     setName(product.name);
-    setAccessType(product.access_type);
     setDescription(product.description || '');
-  }, [product.id, product.name, product.access_type, product.description]);
+    setCapabilities(product.capabilities || []);
+  }, [product.id, product.name, product.description, product.capabilities]);
 
   return (
     <tr>
@@ -334,15 +334,11 @@ function ProductRow({ product, canWrite, onSave }) {
         />
       </td>
       <td>
-        <select
-          value={accessType}
+        <CapabilityEditor
+          selected={capabilities}
           disabled={!canWrite}
-          onChange={(e) => setAccessType(e.target.value)}
-        >
-          <option value="digital">digital</option>
-          <option value="print">print</option>
-          <option value="premium">premium</option>
-        </select>
+          onChange={setCapabilities}
+        />
       </td>
       <td>
         <textarea
@@ -355,13 +351,48 @@ function ProductRow({ product, canWrite, onSave }) {
       </td>
       <td>
         <button
-          disabled={!canWrite || !name.trim()}
-          onClick={() => onSave(product.id, name.trim(), accessType, description.trim())}
+          disabled={!canWrite || !name.trim() || capabilities.length === 0 || !capabilities.includes('READ_DIGITAL')}
+          onClick={() => onSave(product.id, name.trim(), inferAccessType(capabilities), description.trim(), capabilities)}
         >
           Save
         </button>
       </td>
     </tr>
+  );
+}
+
+
+const CAPABILITY_OPTIONS = ['READ_DIGITAL', 'RECEIVE_PRINT', 'NO_ADS'];
+
+function inferAccessType(capabilities) {
+  if (capabilities.includes('NO_ADS')) return 'premium';
+  if (capabilities.includes('RECEIVE_PRINT')) return 'print';
+  return 'digital';
+}
+
+function CapabilityEditor({ selected, disabled, onChange }) {
+  function toggleCapability(capability) {
+    if (selected.includes(capability)) {
+      onChange(selected.filter((item) => item !== capability));
+      return;
+    }
+    onChange([...selected, capability]);
+  }
+
+  return (
+    <div className="capabilities-wrap">
+      {CAPABILITY_OPTIONS.map((capability) => (
+        <label key={capability} className="capability-item">
+          <input
+            type="checkbox"
+            checked={selected.includes(capability)}
+            disabled={disabled}
+            onChange={() => toggleCapability(capability)}
+          />
+          {capability}
+        </label>
+      ))}
+    </div>
   );
 }
 

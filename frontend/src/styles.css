@@ -55,3 +55,17 @@ th, td {
 .customer-create {
   margin-bottom: 12px;
 }
+
+
+.capabilities-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.capability-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 0;
+}

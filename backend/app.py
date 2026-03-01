@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+import json
 import secrets
 
 from flask import Flask, jsonify, request
@@ -20,6 +21,49 @@ PASSWORD_HASH_METHOD = 'pbkdf2:sha256'
 
 def hash_password(password: str) -> str:
     return generate_password_hash(password, method=PASSWORD_HASH_METHOD)
+
+
+ALLOWED_CAPABILITIES = ['READ_DIGITAL', 'RECEIVE_PRINT', 'NO_ADS']
+
+
+def default_capabilities_for_access_type(access_type: str):
+    mapping = {
+        'digital': ['READ_DIGITAL'],
+        'print': ['READ_DIGITAL', 'RECEIVE_PRINT'],
+        'premium': ['READ_DIGITAL', 'RECEIVE_PRINT', 'NO_ADS'],
+    }
+    return mapping.get((access_type or '').lower(), ['READ_DIGITAL'])
+
+
+def parse_capabilities(raw_capabilities):
+    if raw_capabilities is None:
+        return []
+    if isinstance(raw_capabilities, list):
+        values = raw_capabilities
+    else:
+        values = []
+    cleaned = []
+    for item in values:
+        value = str(item).strip().upper()
+        if value and value in ALLOWED_CAPABILITIES and value not in cleaned:
+            cleaned.append(value)
+    return cleaned
+
+
+def capabilities_to_storage(capabilities):
+    return json.dumps(capabilities)
+
+
+def capabilities_from_storage(raw_capabilities):
+    if not raw_capabilities:
+        return []
+    try:
+        parsed = json.loads(raw_capabilities)
+    except Exception:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return parse_capabilities(parsed)
 
 
 class AppUser(db.Model):
@@ -48,6 +92,7 @@ class Product(db.Model):
     name = db.Column(db.String(120), unique=True, nullable=False)
     access_type = db.Column(db.String(20), nullable=False)
     description = db.Column(db.Text, nullable=False, default='')
+    capabilities = db.Column(db.Text, nullable=False, default='[]')
 
 
 class Entitlement(db.Model):
@@ -141,11 +186,13 @@ def customer_to_dict(customer):
 
 
 def product_to_dict(product):
+    capabilities = capabilities_from_storage(product.capabilities)
     return {
         'id': product.id,
         'name': product.name,
         'access_type': product.access_type,
         'description': product.description or '',
+        'capabilities': capabilities,
     }
 
 
@@ -318,11 +365,16 @@ def update_product(product_id):
     name = payload.get('name', '').strip()
     access_type = payload.get('access_type', '').strip().lower()
     description = payload.get('description', '').strip()
+    capabilities = parse_capabilities(payload.get('capabilities'))
 
     if not name:
         return jsonify({'error': 'name is required'}), 400
     if access_type not in {'digital', 'print', 'premium'}:
         return jsonify({'error': 'access_type must be one of: digital, print, premium'}), 400
+    if not capabilities:
+        return jsonify({'error': 'at least one capability is required'}), 400
+    if 'READ_DIGITAL' not in capabilities:
+        return jsonify({'error': 'READ_DIGITAL is required for all products'}), 400
 
     existing = Product.query.filter(Product.id != product.id, Product.name == name).first()
     if existing:
@@ -331,6 +383,7 @@ def update_product(product_id):
     product.name = name
     product.access_type = access_type
     product.description = description
+    product.capabilities = capabilities_to_storage(capabilities)
     db.session.commit()
     return jsonify(product_to_dict(product))
 
@@ -463,19 +516,45 @@ def ensure_schema_updates():
     if 'description' not in product_columns:
         db.session.execute(text("ALTER TABLE products ADD COLUMN description TEXT NOT NULL DEFAULT ''"))
         db.session.commit()
+    if 'capabilities' not in product_columns:
+        db.session.execute(text("ALTER TABLE products ADD COLUMN capabilities TEXT NOT NULL DEFAULT '[]'"))
+        db.session.commit()
 
 def seed_data():
+
+    legacy_name_map = {
+        'Digital Basic': 'Digital',
+        'Print Weekly': 'Print',
+        'Premium All-Access': 'Premium',
+    }
+    for old_name, new_name in legacy_name_map.items():
+        legacy_product = Product.query.filter_by(name=old_name).first()
+        if legacy_product and not Product.query.filter_by(name=new_name).first():
+            legacy_product.name = new_name
+
     products = [
-        ('Digital Basic', 'digital', 'Digital-only online reading access for daily articles.'),
-        ('Print Weekly', 'print', 'Weekly physical paper delivery with core sections.'),
-        ('Premium All-Access', 'premium', 'Digital + print bundle with premium investigative content.'),
+        ('Digital', 'digital', 'Digital-only online reading access for daily articles.'),
+        ('Print', 'print', 'Print + digital access with physical delivery.'),
+        ('Premium', 'premium', 'Full access bundle: digital + print + ad-free experience.'),
     ]
     for name, access_type, description in products:
+        expected_capabilities = default_capabilities_for_access_type(access_type)
         existing_product = Product.query.filter_by(name=name).first()
         if not existing_product:
-            db.session.add(Product(name=name, access_type=access_type, description=description))
-        elif not existing_product.description:
-            existing_product.description = description
+            db.session.add(
+                Product(
+                    name=name,
+                    access_type=access_type,
+                    description=description,
+                    capabilities=capabilities_to_storage(expected_capabilities),
+                )
+            )
+        else:
+            if not existing_product.description:
+                existing_product.description = description
+            existing_capabilities = capabilities_from_storage(existing_product.capabilities)
+            if not existing_capabilities:
+                existing_product.capabilities = capabilities_to_storage(expected_capabilities)
 
     # app users (operators, not entitlement customers)
     if not AppUser.query.filter_by(email='support@example.com').first():
