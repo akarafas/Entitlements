@@ -44,3 +44,10 @@ th, td {
   color: #c62828;
   font-weight: 700;
 }
+
+.product-description-input {
+  width: 100%;
+  min-height: 88px;
+  resize: vertical;
+  box-sizing: border-box;
+}

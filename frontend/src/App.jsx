@@ -237,9 +237,10 @@ function ProductRow({ product, canWrite, onSave }) {
         </select>
       </td>
       <td>
-        <input
+        <textarea
           value={description}
           disabled={!canWrite}
+          className="product-description-input"
           placeholder="Describe this product"
           onChange={(e) => setDescription(e.target.value)}
         />
