@@ -228,6 +228,36 @@ def list_products():
     return jsonify([product_to_dict(row) for row in Product.query.order_by(Product.id).all()])
 
 
+
+
+@app.put('/api/products/<int:product_id>')
+def update_product(product_id):
+    user, error = require_support()
+    if error:
+        return error
+    del user
+
+    product = Product.query.get_or_404(product_id)
+    payload = request.get_json(force=True)
+
+    name = payload.get('name', '').strip()
+    access_type = payload.get('access_type', '').strip().lower()
+
+    if not name:
+        return jsonify({'error': 'name is required'}), 400
+    if access_type not in {'digital', 'print', 'premium'}:
+        return jsonify({'error': 'access_type must be one of: digital, print, premium'}), 400
+
+    existing = Product.query.filter(Product.id != product.id, Product.name == name).first()
+    if existing:
+        return jsonify({'error': 'product name already exists'}), 400
+
+    product.name = name
+    product.access_type = access_type
+    db.session.commit()
+    return jsonify(product_to_dict(product))
+
+
 @app.get('/api/entitlements')
 def list_entitlements():
     user, error = require_auth()

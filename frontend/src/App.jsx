@@ -96,6 +96,15 @@ export default function App() {
     setRights(data.active_rights || []);
   }
 
+  async function saveProduct(productId, name, accessType) {
+    setError('');
+    await apiFetch(`/products/${productId}`, token, {
+      method: 'PUT',
+      body: JSON.stringify({ name, access_type: accessType }),
+    });
+    await loadData(token);
+  }
+
   return (
     <main className="container">
       <h1>Entitlements Support Console (React + Flask)</h1>
@@ -111,6 +120,28 @@ export default function App() {
       ) : (
         <>
           <p>Logged in role: <strong>{role}</strong> ({canWrite ? 'read/write' : 'read-only'})</p>
+
+          <section className="card">
+            <h2>Products</h2>
+            <p>View all products below. Support users can edit product name and access type.</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th><th>Name</th><th>Access Type</th><th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((product) => (
+                  <ProductRow
+                    key={product.id}
+                    product={product}
+                    canWrite={canWrite}
+                    onSave={saveProduct}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </section>
 
           <section className="card">
             <h2>Grant Entitlement</h2>
@@ -164,6 +195,48 @@ export default function App() {
         </>
       )}
     </main>
+  );
+}
+
+function ProductRow({ product, canWrite, onSave }) {
+  const [name, setName] = useState(product.name);
+  const [accessType, setAccessType] = useState(product.access_type);
+
+  useEffect(() => {
+    setName(product.name);
+    setAccessType(product.access_type);
+  }, [product.id, product.name, product.access_type]);
+
+  return (
+    <tr>
+      <td>{product.id}</td>
+      <td>
+        <input
+          value={name}
+          disabled={!canWrite}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </td>
+      <td>
+        <select
+          value={accessType}
+          disabled={!canWrite}
+          onChange={(e) => setAccessType(e.target.value)}
+        >
+          <option value="digital">digital</option>
+          <option value="print">print</option>
+          <option value="premium">premium</option>
+        </select>
+      </td>
+      <td>
+        <button
+          disabled={!canWrite || !name.trim()}
+          onClick={() => onSave(product.id, name.trim(), accessType)}
+        >
+          Save
+        </button>
+      </td>
+    </tr>
   );
 }
 
