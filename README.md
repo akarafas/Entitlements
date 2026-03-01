@@ -1,68 +1,80 @@
-# Entitlements System
+# Entitlements System (Flask + React)
 
-A runnable full-stack entitlements system for a publisher website using **Django + Django REST Framework** and **Next.js (React)**.
+A runnable full-stack entitlements system for a publisher website built with:
 
-## Features
+- **Backend:** Python Flask + SQLAlchemy
+- **Frontend:** React JavaScript (Vite)
 
-- Grant/update user product entitlements (`POST` / `PUT`)
-- Query a user's current access rights (`GET`)
-- Revoke access rights and support expiry lifecycle
+## What the system supports
+
+- Grant user a product entitlement (`POST` / `PUT`)
+- Query a user's active rights (`GET`)
+- Revoke and expire access rights lifecycle
 - Multiple products per user
-- Purchase history tracking
-- Access history tracking
-- Role-based access control:
-  - `support` = read/write entitlement operations
-  - `developer` = read-only
-- Seeded test accounts for support/developer
+- Role model:
+  - `support`: read + write
+  - `developer`: read only
+- Purchase history and access history tracking
+- Two seeded accepted test accounts for validation
+
+## Data model
+
+- `User`: name, email, physical address, role
+- `Product`: product name + access type (`digital`, `print`, `premium`)
+- `Entitlement`: user ↔ product mapping, start/end dates, revoke metadata
+- `PurchaseHistory`: user, product, price, date start/end
+- `AccessHistory`: user, accessed page, datetime
 
 ## Project layout
 
-- `backend/` Django API server
-- `frontend/` Next.js support UI
+- `backend/` Flask API
+- `frontend/` React UI (support console)
 
-## Quick start
+## Run locally
 
-### 1) Backend
+### 1) Backend (Flask)
 
 ```bash
 cd backend
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python manage.py migrate
-python manage.py seed_data
-python manage.py runserver 0.0.0.0:8000
+python app.py
 ```
 
-### 2) Frontend
+Flask runs on `http://localhost:8000` and auto-creates/initializes `entitlements.db` with seed data.
+
+### 2) Frontend (React)
 
 ```bash
 cd frontend
+cp .env.example .env
 npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Frontend runs on `http://localhost:5173`.
 
-## Test accounts
+## Seeded test accounts
 
 - Support (read/write): `support@example.com` / `Support123!`
 - Developer (read-only): `developer@example.com` / `Developer123!`
 
-## API overview
+## API endpoints
 
-- `POST /api/auth/login/` -> returns DRF token and user role
-- `GET /api/products/`
-- `GET /api/users/`
-- `GET /api/entitlements/`
-- `POST /api/entitlements/` (support only)
-- `PUT /api/entitlements/{id}/` (support only)
-- `POST /api/entitlements/{id}/revoke/` (support only)
-- `GET /api/users/{id}/rights/` -> active rights summary
-- `GET /api/purchase-history/`
-- `GET /api/access-history/`
+- `POST /api/auth/login`
+- `GET /api/users`
+- `GET /api/products`
+- `GET /api/entitlements`
+- `POST /api/entitlements` (support only)
+- `PUT /api/entitlements/{id}` (support only)
+- `POST /api/entitlements/{id}/revoke` (support only)
+- `GET /api/users/{id}/rights`
+- `GET /api/purchase-history`
+- `GET /api/access-history`
 
 ## Notes
 
-- Expired entitlements are excluded from active rights automatically.
-- Access history is also logged when rights are queried.
+- Payments are intentionally not implemented.
+- Entitlement active rights are computed from `is_revoked` and `end_date >= today`.
+- Access history logs when rights are queried.
