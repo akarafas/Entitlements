@@ -103,6 +103,14 @@ def entitlement_to_dict(ent):
     today = date.today()
     is_expired = ent.end_date < today
     is_active = (not ent.is_revoked) and (not is_expired)
+
+    if ent.is_revoked:
+        status = 'revoked'
+    elif is_expired:
+        status = 'expired'
+    else:
+        status = 'active'
+
     return {
         'id': ent.id,
         'customer': ent.customer_id,
@@ -115,6 +123,7 @@ def entitlement_to_dict(ent):
         'revoked_at': ent.revoked_at.isoformat() if ent.revoked_at else None,
         'is_expired': is_expired,
         'is_active': is_active,
+        'status': status,
     }
 
 

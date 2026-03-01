@@ -114,5 +114,6 @@ npm run dev
 ## Notes
 
 - Payments are intentionally not implemented.
+- Entitlements expose lifecycle `status` as `active`, `revoked`, or `expired` (expired after end date).
 - Entitlement active rights are computed from `is_revoked` and `end_date >= today`.
 - Access history logs customer rights lookups.

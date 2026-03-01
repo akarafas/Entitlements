@@ -173,7 +173,7 @@ export default function App() {
                     <td>{ent.product_name}</td>
                     <td>{ent.start_date}</td>
                     <td>{ent.end_date}</td>
-                    <td>{ent.is_active ? 'Active' : ent.is_revoked ? 'Revoked' : 'Expired'}</td>
+                    <td>{formatStatus(ent.status)}</td>
                     <td><button disabled={!canWrite || ent.is_revoked} onClick={() => revokeEntitlement(ent.id)}>Revoke</button></td>
                   </tr>
                 ))}
@@ -196,6 +196,12 @@ export default function App() {
       )}
     </main>
   );
+}
+
+
+function formatStatus(status) {
+  if (!status) return 'Unknown';
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 function ProductRow({ product, canWrite, onSave }) {
