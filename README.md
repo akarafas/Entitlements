@@ -113,6 +113,15 @@ npm run dev
 - `GET /api/purchase-history`
 - `GET /api/access-history`
 
+## Potential Enhancements
+- Caching: Since this service acts as a gateway and is called on nearly every user interaction, adding a caching layer for resolved entitlements would significantly reduce latency and database load.
+- Authentication & Authorization: Replace the simplified developer/support login with a proper auth solution (e.g., RBAC or SSO) to clearly separate end-user access from administrative and support workflows.
+- Schema Refinement: Further normalize the schema around customers, users, products, and entitlements to better reflect real-world relationships and support future product expansion.
+- Multiple Subscriptions: Expand entitlement resolution logic to handle multiple active products per user (e.g., returning the union of entitlements or applying precedence rules), depending on business requirements.
+- Scalability: Containerize the application to enable horizontal scaling, especially to handle traffic spikes during content releases or breaking news.
+- Audit & Analytics: Add a lightweight action history for entitlement changes and access checks to support debugging, security, and usage analysis.
+- Support Tooling: Enhance the UI to allow authorized support staff to edit entitlements for common customer support scenarios.
+
 ## Notes
 
 
